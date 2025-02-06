@@ -8,63 +8,51 @@ declare_id!("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
 pub mod crudapp2 {
     use super::*;
 
-  pub fn close(_ctx: Context<CloseCrudapp2>) -> Result<()> {
-    Ok(())
+  // 
+  pub fn create_journal_entry(ctx: Context<CreateEntry>,) -> Result<()> {
+
   }
 
-  pub fn decrement(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.crudapp2.count = ctx.accounts.crudapp2.count.checked_sub(1).unwrap();
-    Ok(())
-  }
-
-  pub fn increment(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.crudapp2.count = ctx.accounts.crudapp2.count.checked_add(1).unwrap();
-    Ok(())
-  }
-
-  pub fn initialize(_ctx: Context<InitializeCrudapp2>) -> Result<()> {
-    Ok(())
-  }
-
-  pub fn set(ctx: Context<Update>, value: u8) -> Result<()> {
-    ctx.accounts.crudapp2.count = value.clone();
-    Ok(())
-  }
 }
 
+// start with program state
+// state is where you hold all data
+// since smart contracts, are stateless we store everything in program accounts
+// therefore, all state is stored in program accounts
+
+// need to create a custom createEntry struct
+// all accounts passing through instruction handlers are wrapped in this "class"
 #[derive(Accounts)]
-pub struct InitializeCrudapp2<'info> {
-  #[account(mut)]
-  pub payer: Signer<'info>,
+pub struct CreateEntry<'info> {
 
   #[account(
-  init,
-  space = 8 + Crudapp2::INIT_SPACE,
-  payer = payer
+    init,
+    seeds = {title.as_bytes(), owner.key().as_ref()},
+    bump,
+    space = 8 + JournalEntryState::INIT_SPACE,
+    payer = owner,
   )]
-  pub crudapp2: Account<'info, Crudapp2>,
-  pub system_program: Program<'info, System>,
-}
-#[derive(Accounts)]
-pub struct CloseCrudapp2<'info> {
+
+  // naming the account specfied as above
+  pub journal_entry: Account<'info, JournalEntryState>,
+
+  // owner account
+  // since the owner will be paying, the state of the account will change, hence it must
+  // be verbosely stated that this is mutable
   #[account(mut)]
-  pub payer: Signer<'info>,
+  pub owner: Signer<'info>,
 
-  #[account(
-  mut,
-  close = payer, // close account and return lamports to payer
-  )]
-  pub crudapp2: Account<'info, Crudapp2>,
 }
 
-#[derive(Accounts)]
-pub struct Update<'info> {
-  #[account(mut)]
-  pub crudapp2: Account<'info, Crudapp2>,
-}
-
+// everything for journal
 #[account]
 #[derive(InitSpace)]
-pub struct Crudapp2 {
-  count: u8,
+pub struct JournalEntryState {
+
+  pub owner: Pubkey,
+  #[max_len(50)]
+  pub title: String,
+  #[max_len(1000)]
+  pub message: String,
+
 }
