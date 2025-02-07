@@ -8,10 +8,39 @@ declare_id!("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
 pub mod crudapp2 {
     use super::*;
 
-  // 
-  pub fn create_journal_entry(ctx: Context<CreateEntry>,) -> Result<()> {
+  // "C"reate for crud
+  // the title is being passed throughto instruction, but not the actual create entry struct
+  // fix this by using instruction macro to pass this param to the struct
+  pub fn create_journal_entry(ctx: Context<CreateEntry>, title: String, message: String) -> Result<()> {
+    let journal_entry: &mut Account<JournalEntryState> = &mut ctx.accounts.journal_entry;
+    journal_entry.owner = *ctx.accounts.owner.key;
+    journal_entry.title = title;
+    journal_entry.message = message;
+    Ok(())
+  }
+
+  // "R"ead is just reading blockchain entry
+
+  // "U"pdate the journal entry on chain
+  pub fn update_journal_entry(ctx: Context<UpdateEntry>, _title: String, message: String) -> Return <()> {
+
+    let journal_entry: &mut ctx.accounts.journal_entry;
+    journal_entry.message = message;
+
+    Ok(())
 
   }
+
+  // "D"elete the journal entry on chain
+  pub fn delete_journal_entry(_ctx: Context<DeleteEntry>, _title: String) -> Result<()> {
+  
+    // no logic here, since deleting on chain takes place in the data structure itself
+
+    Ok(())
+
+  }
+
+
 
 }
 
@@ -23,6 +52,7 @@ pub mod crudapp2 {
 // need to create a custom createEntry struct
 // all accounts passing through instruction handlers are wrapped in this "class"
 #[derive(Accounts)]
+#[instruction(title: String)]
 pub struct CreateEntry<'info> {
 
   #[account(
@@ -41,6 +71,51 @@ pub struct CreateEntry<'info> {
   // be verbosely stated that this is mutable
   #[account(mut)]
   pub owner: Signer<'info>,
+
+  pub system_program: Program<'info, System>,
+
+}
+
+#[derive(Accounts)]
+#[instruction(title: String)] // title is being passed through to instruction
+pub struct UpdateEntry<'info> {
+
+  #[account(
+    mut,
+    seeds = {title.as_bytes(), owner.key().as_ref()},
+    bump,
+    realloc = 8 * JournalEntryState::INIT_SPACE,
+    realloc::payer = owner, // this is the space and rent allocations being redistributed
+    realloc::zero = true, // setting original calc to 0 before realloc
+  )]
+
+  pub journal_entry: Account<'info, JournalEntryState>,
+
+  #[account(mut)]
+  pub owner: Signer<'info>,
+
+  // system program
+  pub system_program: Program<'info, System>,
+
+}
+
+#[derive(Accounts)]
+#[instruction(title: String)]
+pub struct DeleteEntry<'info> {
+
+  #[account(
+    mut,
+    seeds = {title.as_bytes(), owner.key().as_ref()},
+    bump,
+    closer = owner,
+  )]  
+
+  pub journal_entry: Account<'info, JournalEntryState>,
+
+  #[account(mut)]
+  pub owner: Signer<'info>,
+
+  pub system_program: Program<'info, System>,
 
 }
 
