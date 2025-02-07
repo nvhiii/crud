@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 
 declare_id!("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
 
-#[program]
+#[program] 
 pub mod crudapp2 {
     use super::*;
 
@@ -22,9 +22,10 @@ pub mod crudapp2 {
   // "R"ead is just reading blockchain entry
 
   // "U"pdate the journal entry on chain
-  pub fn update_journal_entry(ctx: Context<UpdateEntry>, _title: String, message: String) -> Return <()> {
+  // why is the title commented out here? this is because the title isnt being used in the handler, just the struct
+  pub fn update_journal_entry(ctx: Context<UpdateEntry>, _title: String, message: String) -> Result <()> {
 
-    let journal_entry: &mut ctx.accounts.journal_entry;
+    let journal_entry = &mut ctx.accounts.journal_entry; // if not using acc context, 
     journal_entry.message = message;
 
     Ok(())
@@ -32,6 +33,7 @@ pub mod crudapp2 {
   }
 
   // "D"elete the journal entry on chain
+  // in rust, if a param isnt used in a function, but it being passed to another struct, best prac is to use _ before the var name 
   pub fn delete_journal_entry(_ctx: Context<DeleteEntry>, _title: String) -> Result<()> {
   
     // no logic here, since deleting on chain takes place in the data structure itself
@@ -57,7 +59,7 @@ pub struct CreateEntry<'info> {
 
   #[account(
     init,
-    seeds = {title.as_bytes(), owner.key().as_ref()},
+    seeds = [title.as_bytes(), owner.key().as_ref()],
     bump,
     space = 8 + JournalEntryState::INIT_SPACE,
     payer = owner,
@@ -82,9 +84,9 @@ pub struct UpdateEntry<'info> {
 
   #[account(
     mut,
-    seeds = {title.as_bytes(), owner.key().as_ref()},
+    seeds = [title.as_bytes(), owner.key().as_ref()], // the title is used here as a seed to calculate pda
     bump,
-    realloc = 8 * JournalEntryState::INIT_SPACE,
+    realloc = 8 + JournalEntryState::INIT_SPACE, // specfic constraint, where it calculates new space
     realloc::payer = owner, // this is the space and rent allocations being redistributed
     realloc::zero = true, // setting original calc to 0 before realloc
   )]
@@ -105,9 +107,10 @@ pub struct DeleteEntry<'info> {
 
   #[account(
     mut,
-    seeds = {title.as_bytes(), owner.key().as_ref()},
+    seeds = [title.as_bytes(), owner.key().as_ref()],
     bump,
-    closer = owner,
+    close = owner, // custom constraint, if this instruction is run, it closes the account
+    // only will work if the pubkey of the account is passed as the owner
   )]  
 
   pub journal_entry: Account<'info, JournalEntryState>,
